@@ -17,10 +17,10 @@ Why 'C' and not 'C++'?
 Simply because I am more comfortable in coding in 'C' rather than
 'C++'.
 
-Usage: ./rados_table <options>
-	-p : Pool Name
-	-r : Number of Rows
-	-c : Number of Columns
-	-s : Data size
+Usage: ./rados_table <options><br>
+	-p : Pool Name<br>
+	-r : Number of Rows<br>
+	-c : Number of Columns<br>
+	-s : Data size<br>
 
 Makefile supports -DDEBUG flag to turn on/off debugging.
