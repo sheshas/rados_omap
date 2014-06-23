@@ -21,12 +21,14 @@ bin=rados_table
 # Libraries to load
 LIBS=-lrados
 
+DBGFLAGS=-DDEBUG
+
 LDFLAGS=${C_LIBPATHS} ${R_LIBPATHS}
 
 all: rados_table
 
 ${obj}:%.o:%.c
-	${CC} ${CFLAGS} ${INC} -c $^
+	${CC} ${CFLAGS} ${INC} ${DBGFLAGS} -c $^
 
 rados_table:${obj}
 	${CC} ${CFLAGS} ${INC} ${LDFLAGS} -o $@ ${obj} ${LIBS}

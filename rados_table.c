@@ -12,15 +12,14 @@
 #define ROW_PREFIX "row"
 #define COL_PREFIX "field"
 
-#define DEBUG
-
+/* Passed in from the Makefile */
 #ifdef DEBUG
 #define DBG(_a) printf _a
 #else
 #define DBG(_a)
 #endif
 
-static void open_ioctx(char *pool, rados_t *cluster, rados_ioctx_t *ioctx)
+static void initialize(char *pool, rados_t *cluster, rados_ioctx_t *ioctx)
 {
     DBG(("Create Cluster\n"));
     assert (rados_create(cluster, NULL) == 0);
@@ -39,7 +38,7 @@ static void usage(const char *pgm)
     printf("\t-p : Pool Name\n");
     printf("\t-r : Number of Rows\n");
     printf("\t-c : Number of Columns\n");
-    printf("\t-c : Data size\n");
+    printf("\t-s : Data size\n");
 }
 
 int main(int argc, char **argv)
@@ -88,7 +87,7 @@ int main(int argc, char **argv)
     rados_ioctx_t ioctx = NULL;
 
   // connect to rados
-    open_ioctx(pool, &cluster, &ioctx);
+    initialize(pool, &cluster, &ioctx);
 
     assert(cluster);
     assert(ioctx);
@@ -102,6 +101,7 @@ int main(int argc, char **argv)
     rados_write_op_t wrop = rados_create_write_op();
     assert(wrop);
     rados_write_op_assert_exists(wrop);
+    rados_write_op_create(wrop, LIBRADOS_CREATE_EXCLUSIVE, NULL);
 
     for (rid = 0; rid < nrows; rid++) {
         char objname[1024];
@@ -118,17 +118,17 @@ int main(int argc, char **argv)
             keys[cid] = strdup(keyname);
             vals[cid] = strdup(data);
             sz[cid] = sizeof(data);
-            DBG(("K: %s, sz: %d\n", keys[cid], (int) sz[cid]));
+            DBG(("Key: %s, sz: %d\n", keys[cid], (int) sz[cid]));
         }
-        rados_write_op_create(wrop, LIBRADOS_CREATE_EXCLUSIVE, NULL);
+
         rados_write_op_omap_set(wrop, (char const * const *)keys,
             (char const * const *)vals, sz, ncols);
         rados_write_op_operate(wrop, ioctx, objname, NULL,
             LIBRADOS_OPERATION_NOFLAG);
         rados_write_op_omap_clear(wrop);
-        rados_write_op_remove(wrop);
     }
 
+    rados_write_op_remove(wrop);
     rados_release_write_op(wrop);
     if (keys[cid])
         free(keys[cid]);
