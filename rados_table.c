@@ -79,7 +79,7 @@ int main(int argc, char **argv)
         usage(argv[0]);
         exit(1);
     }
- 
+
     DBG(("conf: pool=%s, nrows=%d, ncols=%d, dsz: %d\n",
         pool, nrows, ncols, dsz));
 
@@ -97,11 +97,12 @@ int main(int argc, char **argv)
     size_t  sz[1024];
     char    keyname[1024];
     char    data[dsz];
-    
+
     rados_write_op_t wrop = rados_create_write_op();
     assert(wrop);
     rados_write_op_assert_exists(wrop);
     rados_write_op_create(wrop, LIBRADOS_CREATE_EXCLUSIVE, NULL);
+    memset (data, 'S', sizeof(data)); 
 
     for (rid = 0; rid < nrows; rid++) {
         char objname[1024];
@@ -125,7 +126,6 @@ int main(int argc, char **argv)
             (char const * const *)vals, sz, ncols);
         rados_write_op_operate(wrop, ioctx, objname, NULL,
             LIBRADOS_OPERATION_NOFLAG);
-        rados_write_op_omap_clear(wrop);
     }
 
     rados_write_op_remove(wrop);
