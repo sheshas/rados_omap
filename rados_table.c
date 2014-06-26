@@ -10,7 +10,8 @@
 #include <rados/librados.h>
 
 #define ROW_PREFIX "row"
-#define COL_PREFIX "field"
+#define COL_PREFIX "col"
+#define MAX_NAME_LEN 64
 
 /* Passed in from the Makefile */
 #ifdef DEBUG
@@ -92,48 +93,51 @@ int main(int argc, char **argv)
     assert(cluster);
     assert(ioctx);
 
-    char    *keys[1024];
-    char    *vals[1024];
-    size_t  sz[1024];
-    char    keyname[1024];
+    char    *keys[ncols];
+    char    *vals[ncols];
+    size_t  sz[ncols];
+    char    keyname[MAX_NAME_LEN];
     char    data[dsz];
+    char objname[MAX_NAME_LEN];
+    int i;
+
+    for (i = 0; i < ncols; i++) {
+        keys[i] = malloc(MAX_NAME_LEN);
+        vals[i] = malloc(dsz);
+    }
 
     rados_write_op_t wrop = rados_create_write_op();
     assert(wrop);
     rados_write_op_assert_exists(wrop);
-    rados_write_op_create(wrop, LIBRADOS_CREATE_EXCLUSIVE, NULL);
-    memset (data, 'S', sizeof(data)); 
+    rados_write_op_create(wrop, LIBRADOS_CREATE_IDEMPOTENT, NULL);
 
     for (rid = 0; rid < nrows; rid++) {
-        char objname[1024];
-        sprintf(objname, "%s%d", ROW_PREFIX, rid);
+        sprintf(objname, "%s.%d", ROW_PREFIX, rid);
         rados_write_full(ioctx, objname, "", 0);
 
         for (cid = 0; cid < ncols; cid++) {
-            sprintf(keyname, "%s.%s%d", objname,
-                COL_PREFIX, cid);
-            if (keys[cid])
-                free(keys[cid]);
-            if (vals[cid])
-                free(vals[cid]);
-            keys[cid] = strdup(keyname);
-            vals[cid] = strdup(data);
+            sprintf(keyname, "%s.%d", COL_PREFIX, cid);
+            strcpy(keys[cid], keyname);
+            memcpy(vals[cid], data, sizeof(data));
             sz[cid] = sizeof(data);
             DBG(("Key: %s, sz: %d\n", keys[cid], (int) sz[cid]));
         }
 
         rados_write_op_omap_set(wrop, (char const * const *)keys,
             (char const * const *)vals, sz, ncols);
-        rados_write_op_operate(wrop, ioctx, objname, NULL,
+        int ret = rados_write_op_operate(wrop, ioctx, objname, NULL,
             LIBRADOS_OPERATION_NOFLAG);
+        assert (ret == 0);
     }
 
     rados_write_op_remove(wrop);
     rados_release_write_op(wrop);
-    if (keys[cid])
-        free(keys[cid]);
-    if (vals[cid])
-        free(vals[cid]);
+
+    for (i = 0; i < ncols; i++) {
+        free (keys[i]);
+        free (vals[i]);
+    }
+
 
     rados_ioctx_destroy(ioctx);
     rados_shutdown(cluster);
